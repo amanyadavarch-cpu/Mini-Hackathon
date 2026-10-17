@@ -41,6 +41,29 @@ afterAll(async () => {
 });
 
 describe("transaction-to-investigation workflow", () => {
+  it("registers a public analyst account and rejects duplicate email addresses", async () => {
+    const registration = await request(app)
+      .post("/api/v1/auth/register")
+      .send({ name: "New Analyst", email: "new-analyst@example.test", password: "SafePassword123!" })
+      .expect(201);
+
+    expect(registration.body.data.user).toMatchObject({
+      name: "New Analyst",
+      email: "new-analyst@example.test",
+      role: "analyst"
+    });
+    expect(registration.body.data.token).toEqual(expect.any(String));
+    expect(registration.body.data.user.passwordHash).toBeUndefined();
+    const registeredUser = await User.findOne({ email: "new-analyst@example.test" }).select("+passwordHash");
+    expect(registeredUser?.passwordHash).not.toBe("SafePassword123!");
+    expect(await bcrypt.compare("SafePassword123!", registeredUser!.passwordHash)).toBe(true);
+
+    await request(app)
+      .post("/api/v1/auth/register")
+      .send({ name: "Duplicate Analyst", email: "new-analyst@example.test", password: "SafePassword123!" })
+      .expect(409);
+  });
+
   it("creates, scores, alerts, investigates, updates, and persists a transaction", async () => {
     const created = await request(app)
       .post("/api/v1/transactions")

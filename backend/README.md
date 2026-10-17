@@ -49,7 +49,7 @@ Open `http://127.0.0.1:5181`. Sign in with the demo admin credentials configured
 
 ## API endpoints
 
-- `POST /api/v1/auth/login`, `GET /api/v1/auth/me`
+- `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/auth/me`
 - `GET /api/v1/transactions`, `GET /api/v1/transactions/:id`
 - `POST /api/v1/transactions`, `POST /api/v1/transactions/:id/evaluate`
 - `PATCH /api/v1/transactions/:id/status`, `GET /api/v1/transactions/:id/history`
@@ -61,7 +61,7 @@ Open `http://127.0.0.1:5181`. Sign in with the demo admin credentials configured
 - `GET /api/v1/analytics/risk-distribution`
 - `GET /api/v1/analytics/activity?range=24h|7d|30d`
 
-All application endpoints except health/readiness and login require a bearer JWT. Risk scoring is deterministic and rule-based; this demo contains fictional transaction data and is not a real fraud-detection service.
+Registration and login are public. Self-registered accounts receive the analyst role; registration is rate limited. All other application endpoints except health/readiness require a bearer JWT. Risk scoring is deterministic and rule-based; this demo contains fictional transaction data and is not a real fraud-detection service.
 
 ## Verification
 

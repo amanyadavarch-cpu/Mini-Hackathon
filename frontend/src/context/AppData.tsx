@@ -20,6 +20,7 @@ interface AppDataValue {
   overview: ApiOverview
   riskDistribution: Record<RiskLevel, number>
   login: (email: string, password: string) => Promise<void>
+  register: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
   refreshData: () => Promise<void>
   loadTransaction: (id: string) => Promise<void>
@@ -121,6 +122,14 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     setError(null)
     setFeedback(null)
     const authenticatedUser = await api.login(email, password)
+    setUser(authenticatedUser)
+    await refreshData()
+  }, [refreshData])
+
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    setError(null)
+    setFeedback(null)
+    const authenticatedUser = await api.register(name, email, password)
     setUser(authenticatedUser)
     await refreshData()
   }, [refreshData])
@@ -281,11 +290,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<AppDataValue>(() => ({
     user, authLoading, loading, error, feedback, transactions, alerts, rules, settings,
-    overview, riskDistribution, login, logout, refreshData, loadTransaction, loadActivity, createTransaction,
+    overview, riskDistribution, login, register, logout, refreshData, loadTransaction, loadActivity, createTransaction,
     updateStatus, saveNotes, setRule, resetRules,
     setSettings: setSettingsState,
     clearFeedback: () => setFeedback(null),
-  }), [user, authLoading, loading, error, feedback, transactions, alerts, rules, settings, overview, riskDistribution, login, logout, refreshData, loadTransaction, loadActivity, createTransaction, updateStatus, saveNotes, setRule, resetRules])
+  }), [user, authLoading, loading, error, feedback, transactions, alerts, rules, settings, overview, riskDistribution, login, register, logout, refreshData, loadTransaction, loadActivity, createTransaction, updateStatus, saveNotes, setRule, resetRules])
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>
 }

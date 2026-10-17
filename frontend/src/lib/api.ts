@@ -187,6 +187,11 @@ export const api = {
     setToken(result.token)
     return result.user
   },
+  register: async (name: string, email: string, password: string) => {
+    const result = await request<{ token: string; user: ApiUser }>('/auth/register', json('POST', { name, email, password }), false)
+    setToken(result.token)
+    return result.user
+  },
   me: () => request<ApiUser>('/auth/me'),
   logout: () => setToken(null),
   hasToken: () => Boolean(getToken()),

@@ -85,7 +85,7 @@ The backend integration test uses a temporary MongoDB instance to verify the tra
 
 All API paths are under `/api/v1`. Health, readiness, and login are public; application data endpoints require a bearer token.
 
-- Authentication: `POST /auth/login`, `GET /auth/me`
+- Authentication: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`. Anyone can create an analyst account from the sign-in page; registration is rate limited and cannot create admin accounts.
 - Transactions: `GET/POST /transactions`, `GET /transactions/:id`, status and risk evaluation endpoints
 - Alerts: `GET /alerts`, `PATCH /alerts/:id/status`
 - Investigations: list and transaction-scoped investigation/note endpoints
@@ -94,3 +94,22 @@ All API paths are under `/api/v1`. Health, readiness, and login are public; appl
 
 See [backend/README.md](./backend/README.md) for the full route list and backend setup details.
 
+## Deploy to Vercel
+
+Deploy the frontend and backend as **two Vercel projects** from this GitHub repository:
+
+1. Import the repository into Vercel twice.
+2. For the frontend project, set the root directory to `frontend`. Use `npm install` as the install command, `npm run build` as the build command, and `dist` as the output directory. The included `frontend/vercel.json` rewrites client-side routes to the Vite entry point.
+3. For the backend project, set the root directory to `backend`. Vercel detects the catch-all Node function in `api/` and serves the Express API through it.
+4. Configure these backend environment variables in Vercel for Production (and Preview if needed): `MONGODB_URI`, `JWT_SECRET`, `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD`, and `FRONTEND_ORIGIN`. Set `FRONTEND_ORIGIN` to the deployed frontend origin, without a trailing slash.
+5. Configure the frontend build environment variable `VITE_API_BASE_URL` as `https://<backend-project>.vercel.app/api/v1`, then redeploy the frontend.
+6. After rotating any credentials previously exposed, seed the production database once from the local `backend` directory using the same private environment values:
+
+   ```powershell
+   Set-Location backend
+   npm run seed
+   ```
+
+The backend health and readiness checks are available at `https://<backend-project>.vercel.app/api/v1/health` and `/api/v1/ready`. The database name in `MONGODB_URI` must match the existing Atlas database spelling exactly. Never add production secrets to GitHub or commit `.env` files.
+
+Vercel deployment requires access to a Vercel account. Importing the GitHub repository in Vercel will create deployments on subsequent pushes.

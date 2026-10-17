@@ -3,12 +3,24 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { z } from "zod";
+import rateLimit from "express-rate-limit";
 import { User, Transaction, Alert, FraudRule, Investigation, AuditLog } from "./models.js";
 import { allowRoles, asyncHandler, authenticate, audit, validate } from "./lib/http.js";
 import { evaluateAndAlert } from "./services/fraud.js";
 
 const router = Router();
 const loginSchema = z.object({ email: z.string().email().transform(v => v.toLowerCase()), password: z.string().min(8) });
+const registerSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  email: z.string().trim().email().max(254).transform(v => v.toLowerCase()),
+  password: z.string().min(8).max(72)
+});
+const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false
+});
 const transactionSchema = z.object({
   transactionId: z.string().min(3).max(80).optional(),
   customerId: z.string().min(1), customerName: z.string().min(1),
@@ -26,6 +38,21 @@ router.post("/auth/login", validate(loginSchema), asyncHandler(async (req, res) 
   if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is not configured");
   const token = jwt.sign({ id: String(user._id), email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "8h" });
   res.json({ success: true, data: { token, user: { id: user._id, name: user.name, email: user.email, role: user.role } } });
+}));
+router.post("/auth/register", registrationLimiter, validate(registerSchema), asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body as z.infer<typeof registerSchema>;
+  if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is not configured");
+  const existingUser = await User.exists({ email });
+  if (existingUser) return res.status(409).json({ success: false, error: "An account with this email already exists" });
+
+  const user = await User.create({
+    name,
+    email,
+    passwordHash: await bcrypt.hash(password, 12),
+    role: "analyst"
+  });
+  const token = jwt.sign({ id: String(user._id), email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "8h" });
+  res.status(201).json({ success: true, data: { token, user: { id: user._id, name: user.name, email: user.email, role: user.role } } });
 }));
 router.get("/auth/me", authenticate, asyncHandler(async (req, res) => {
   const user = await User.findById(req.user!.id).select("name email role isActive");
