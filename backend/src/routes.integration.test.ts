@@ -164,3 +164,41 @@ describe("transaction-to-investigation workflow", () => {
     expect(rescored?.riskLevel).toBe("Medium");
   });
 });
+
+describe("user registration", () => {
+  it("creates an analyst account, returns a session, and allows the new user to sign in", async () => {
+    const registration = await request(app)
+      .post("/api/v1/auth/register")
+      .send({ name: "New Analyst", email: " NEW.ANALYST@example.test ", password: "NewPassword123!" })
+      .expect(201);
+
+    expect(registration.body.data.user).toMatchObject({
+      name: "New Analyst",
+      email: "new.analyst@example.test",
+      role: "analyst"
+    });
+    expect(registration.body.data.token).toEqual(expect.any(String));
+    expect(registration.body.data.user.passwordHash).toBeUndefined();
+
+    const storedUser = await User.findOne({ email: "new.analyst@example.test" }).select("+passwordHash");
+    expect(storedUser?.passwordHash).not.toBe("NewPassword123!");
+    expect(await bcrypt.compare("NewPassword123!", storedUser!.passwordHash)).toBe(true);
+
+    await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "new.analyst@example.test", password: "NewPassword123!" })
+      .expect(200);
+  });
+
+  it("rejects duplicate email addresses and invalid registration details", async () => {
+    await request(app)
+      .post("/api/v1/auth/register")
+      .send({ name: "Existing Analyst", email: "analyst@example.test", password: "NewPassword123!" })
+      .expect(409);
+
+    await request(app)
+      .post("/api/v1/auth/register")
+      .send({ name: "A", email: "not-an-email", password: "short" })
+      .expect(400);
+  });
+});
